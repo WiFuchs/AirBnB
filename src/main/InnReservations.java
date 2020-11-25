@@ -34,32 +34,17 @@ public class InnReservations {
 
   private static void mainMenu() {
     try (Scanner in = new Scanner(System.in)) {
-      boolean exit = false;
-      while (!exit) {
+      while (true) {
         System.out.println(MENU);
         try {
-          switch (in.nextInt()) {
-            case 1:
-              roomsAndRates();
-              break;
-            case 2:
-              reservations();
-              break;
-            case 3:
-              reservationChange();
-              break;
-            case 4:
-              reservationCancellation();
-              break;
-            case 5:
-              revenueSummary();
-              break;
-            case 6:
-              exit = true;
-              break;
-            default:
-              throw new InputMismatchException();
-          }
+          int c = in.nextInt();
+          if (c == 1) roomsAndRates();
+          else if (c == 2) reservations();
+          else if (c == 3) reservationChange();
+          else if (c == 4) reservationCancellation();
+          else if (c == 5) revenueSummary();
+          else if (c == 6) break;
+          else throw new InputMismatchException();
         } catch (InputMismatchException e) {
           in.nextLine();
           System.out.println("You must input an integer from 1 to 6!");
