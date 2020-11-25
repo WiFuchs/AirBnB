@@ -14,8 +14,8 @@ repositories {
 
 task run (type: JavaExec){
     description = "run CSC 365 JDBC application"
-    main = 'HastyPastry'
-    classpath = sourceSets.main.runtimeClasspath
+    main = 'InnReservations'
+    classpath = sourceSets.main.java.srcDir('src')
     standardInput = System.in
 }
 
