@@ -4,6 +4,49 @@ DROP TABLE IF EXISTS lab7_rooms;
 CREATE TABLE lab7_rooms (RoomCode CHAR(5) PRIMARY KEY, RoomName VARCHAR(30), Beds INTEGER, bedType VARCHAR(8), maxOcc INTEGER, basePrice FLOAT, decor VARCHAR(20), UNIQUE(RoomName));
 CREATE TABLE lab7_reservations (CODE INTEGER PRIMARY KEY, Room CHAR(5), CheckIn DATE, Checkout DATE, Rate FLOAT, LastName VARCHAR(15), FirstName VARCHAR(15), Adults INTEGER, Kids INTEGER, FOREIGN KEY (Room) REFERENCES lab7_rooms (RoomCode));
 
+-- create constraints
+CREATE  TRIGGER no_double_bookings
+BEFORE INSERT
+ON lab7_reservations
+for each row
+begin
+    declare conflicting integer;
+    select 1
+    into conflicting
+    from lab7_reservations
+    where Room = new.Room
+        and (
+            (CheckOut > new.CheckIn and CheckOut <= new.Checkout)
+            or (CheckIn >= new.CheckIn  and CheckIn < new.Checkout)
+            );
+    if conflicting then
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Double Booking';
+    end if;
+end;
+
+CREATE  TRIGGER check_room_capacity
+BEFORE INSERT
+ON lab7_reservations
+for each row
+begin
+    declare maximumOcc integer;
+    select maxOcc
+    into maximumOcc
+    from lab7_rooms
+    where RoomCode = new.Room;
+    if maximumOcc < (new.Adults + new.Kids) then
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Maximum Room Occupancy Exceeded';
+    end if;
+end;
+
+INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids)
+VALUES ((select max(code) from (select code from lab7_reservations) as codes) + 1, 'room', 'checkin', 'checkout',
+(select baseprice from lab7_rooms where RoomCode = 'room'),'lastname','firstname','adults','kids');
+
+
+
 INSERT INTO lab7_rooms(RoomCode,RoomName,Beds,bedType,maxOcc,basePrice,decor) VALUES ('AOB','Abscond or bolster',2,'Queen',4,175,'traditional');
 INSERT INTO lab7_rooms(RoomCode,RoomName,Beds,bedType,maxOcc,basePrice,decor) VALUES ('CAS','Convoke and sanguine',2,'King',4,175,'traditional');
 INSERT INTO lab7_rooms(RoomCode,RoomName,Beds,bedType,maxOcc,basePrice,decor) VALUES ('FNA','Frugal not apropos',2,'King',4,250,'traditional');
@@ -597,7 +640,7 @@ INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97375,'MWC','2010-08-26','2010-08-27',112.5,'DONNELLEY','GARNET',3,0);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97491,'TAA','2010-06-19','2010-06-23',86.25,'BALCOM','JOEY',1,0);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97512,'RND','2010-12-31','2011-01-02',150,'FRAILEY','JUANITA',1,0);
-INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97519,'RND','2011-01-04','2011-01-10',150.00999450683594,'STURN','ARIZONA',2,1);
+INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97519,'RND','2011-01-04','2011-01-10',150.00999450683594,'STURN','ARIZONA',1,1);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97542,'CAS','2010-01-27','2010-01-29',175,'GARZONE','EDISON',3,0);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97585,'HBB','2010-08-15','2010-08-16',85,'PARISER','ELIJAH',1,0);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (97924,'TAA','2010-05-19','2010-05-21',75,'SPECTOR','FRITZ',2,0);
