@@ -107,6 +107,79 @@ public class InnReservations {
     }
 
     private static void revenueSummary() {
-        System.out.println("revenueSummary");
+        System.out.println("Revenue Summary");
+        try {
+            // Look up reservation in DB
+            try (Connection conn = DriverManager.getConnection(JDBC_URL,
+                    JDBC_USER,
+                    JDBC_PASSWORD)) {
+                // Step 2: Construct SQL statement
+                String selectSql = "WITH reservation_price AS (\n" +
+                        "    SELECT *, DATEDIFF('DAY', CheckIn, CheckOut) * Rate Cost\n" +
+                        "    FROM lab7_rooms Room\n" +
+                        "             JOIN lab7_reservations R ON R.Room = Room.RoomCode\n" +
+                        "), monthly_total AS (\n" +
+                        "    SELECT RoomCode, RoomName, MONTH(CheckOut) Mth, SUM(Cost) MonthTot\n" +
+                        "    FROM reservation_price\n" +
+                        "    GROUP BY MONTH(CheckOut), RoomCode\n" +
+                        ")\n" +
+                        "select *\n" +
+                        "from monthly_total\n" +
+                        "ORDER BY RoomCode, Mth";
+
+                // Step 4: Send SQL statement to DBMS
+                try (Statement stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+                     ResultSet rs = stmt.executeQuery(selectSql)) {
+                    //Print Header
+                    System.out.format("%-5s %-25s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %n",
+                            "CODE", "Name", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Total");
+                    System.out.println(String.format("%175s", '-').replaceAll(" ", "-"));
+                    float[] totalTotals = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+                    float totalTotal = 0;
+                    while (rs.next()) {
+                        // Loop through each room type
+                        String currCode = rs.getString("RoomCode");
+                        String code1;
+                        String room = rs.getString("RoomName");
+                        float total = 0;
+                        float[] months = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+                        while (true) {
+                            code1 = rs.getString("RoomCode");
+                            if (!currCode.equals(code1)) {
+                                code1 = currCode;
+                                rs.previous();
+                                break;
+                            }
+                            int Mth = rs.getInt("Mth");
+                            float monthTot = rs.getFloat("MonthTot");
+                            // Set monthly totals
+                            months[Mth - 1] = monthTot;
+                            total += monthTot;
+
+                            //Update totals
+                            totalTotals[Mth - 1] += monthTot;
+                            totalTotal += monthTot;
+                            if (!rs.next()) break;
+                        }
+                        System.out.format("%-5s %-25s %s %n", code1, room, totalsString(months, total));
+                    }
+                    System.out.println();
+                    System.out.format("%-31s %s %n", "TOTAL PER MONTH", totalsString(totalTotals, totalTotal));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Could not load reservations.");
+        }
+    }
+
+    private static String totalsString(float[] totalArr, float total) {
+        StringBuilder totals = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            String totMonth = String.format("$%.2f", totalArr[i]);
+            String padded = String.format("%10s ", totMonth);
+            totals.append(padded);
+        }
+        String totMonth = String.format("$%.2f", total);
+        return totals + String.format("%10s ", totMonth);
     }
 }
