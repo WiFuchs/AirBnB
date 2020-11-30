@@ -13,14 +13,14 @@ public class InnReservations {
     private static final String JDBC_USER = "";
     private static final String JDBC_PASSWORD = "";
     private static final String MENU =
-            "\nMain Menu"
-                    + "\n1: FR1 view all rooms and rates"
-                    + "\n2: FR2 make a new reservation"
-                    + "\n3: FR3 change a reservation"
-                    + "\n4: FR4 cancel a reservation"
-                    + "\n5: FR5 view revenue summary"
-                    + "\n6: exit"
-                    + "\nSelect an option, or hold to speak with a representative";
+        "\nMain Menu"
+                + "\n1: FR1 view all rooms and rates"
+                + "\n2: FR2 make a new reservation"
+                + "\n3: FR3 change a reservation"
+                + "\n4: FR4 cancel a reservation"
+                + "\n5: FR5 view revenue summary"
+                + "\n6: exit"
+                + "\nSelect an option, or hold to speak with a representative";
 
     public static void main(String[] args) {
         try {
