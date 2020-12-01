@@ -58,7 +58,45 @@ public class InnReservations {
     }
 
     private static void reservations() {
-        System.out.println("reservations");
+        System.out.println("Make a new reservation");
+        Scanner in = new Scanner(System.in);
+        System.out.println("What is your first name?");
+        String fname = in.nextLine().toUpperCase();
+        System.out.println("What is your last name?");
+        String lname = in.nextLine().toUpperCase();
+        System.out.println("What is the room code of the room you want to reserve?");
+        String room = in.nextLine().toUpperCase();
+        System.out.println("When do you want to check in?");
+        String checkin = in.nextLine();
+        System.out.println("When do you want to check out?");
+        String checkout = in.nextLine();
+        System.out.println("How many children are in your party?");
+        int children = in.nextInt();
+        System.out.println("How many adults are in your party?");
+        int adults = in.nextInt();
+        System.out.println("Checking availability for "+room+" between "+checkin+" and "+checkout+" for "+children+" children and "+adults+" adults");
+
+        try (Connection conn = DriverManager.getConnection(JDBC_URL,
+                JDBC_USER,
+                JDBC_PASSWORD)) {
+            String insertSql = "INSERT INTO lab7_reservations (code, Room, CheckIn, Checkout, Rate, LastName, FirstName, Adults, Kids)" +
+                    "VALUES ((select max(code) + 1 from lab7_reservations), ?, ?, ?, (select basePrice from lab7_rooms where roomcode = ?), ?, ?, ?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                pstmt.setString(1, room);
+                pstmt.setDate(2, java.sql.Date.valueOf(checkin));
+                pstmt.setDate(3, java.sql.Date.valueOf(checkout));
+                pstmt.setString(4, room);
+                pstmt.setString(5, lname);
+                pstmt.setString(6, fname);
+                pstmt.setInt(7, adults);
+                pstmt.setInt(8, children);
+
+                int numUpdated = pstmt.executeUpdate();
+                System.out.println(numUpdated);
+            }
+        } catch (SQLException e) {
+            System.out.println("Could not create reservation: " + e.getMessage().split(";")[0]);
+        }
     }
 
     private static void reservationChange() {

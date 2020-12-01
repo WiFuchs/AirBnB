@@ -614,3 +614,4 @@ INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (99863,'FNA','2010-04-17','2010-04-19',250,'ARBUCKLE','LORENA',4,0);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (99998,'HBB','2009-12-01','2009-12-10',209,'LAST','YEAR',1,0);
 INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (99999,'SAY','2009-12-12','2011-01-15',99,'ARNN','KIP',1,0);
+-- INSERT INTO lab7_reservations(CODE,Room,CheckIn,Checkout,Rate,LastName,FirstName,Adults,Kids) VALUES (100000,'SAY','2010-12-12','2011-01-01',99,'ARNN','KIP',1,0);
