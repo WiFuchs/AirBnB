@@ -20,9 +20,12 @@ public class NoDoubleBookingsTrigger implements Trigger {
     @Override
     public void fire(Connection conn, Object[] oldRow, Object[] newRow)
             throws SQLException {
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "select checkout from lab7_reservations where room = ? and checkout > ? and checkin < ?;")
-        ) {
+        StringBuilder sb = new StringBuilder("select checkout from lab7_reservations where room = ? and checkout > ? and checkin < ?");
+        if (oldRow != null) {
+            sb.append(" and code <> ");
+            sb.append(oldRow[0]);
+        }
+        try (PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
             stmt.setObject(1, newRow[room]);
             stmt.setObject(2, newRow[checkin]);
             stmt.setObject(3, newRow[checkout]);

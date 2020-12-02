@@ -6,4 +6,6 @@ CREATE TABLE lab7_reservations (CODE INTEGER PRIMARY KEY, Room CHAR(5), CheckIn 
 
 -- setup constraints
 CREATE TRIGGER no_double_bookings BEFORE INSERT ON lab7_reservations FOR EACH ROW CALL "database.NoDoubleBookingsTrigger";
+CREATE TRIGGER no_double_bookings_update BEFORE UPDATE ON lab7_reservations FOR EACH ROW CALL "database.NoDoubleBookingsTrigger";
 CREATE TRIGGER check_max_occupancy BEFORE INSERT ON lab7_reservations FOR EACH ROW CALL "database.CheckMaxOccTrigger";
+CREATE TRIGGER check_max_occupancy_update BEFORE UPDATE ON lab7_reservations FOR EACH ROW CALL "database.CheckMaxOccTrigger";
