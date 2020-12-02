@@ -4,8 +4,14 @@ import database.Database;
 
 import java.io.FileNotFoundException;
 import java.sql.*;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.InputMismatchException;
 import java.util.Scanner;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
+import static java.time.temporal.ChronoUnit.DAYS;
 
 public class InnReservations {
 
@@ -67,9 +73,9 @@ public class InnReservations {
         System.out.println("What is the room code of the room you want to reserve?");
         String room = in.nextLine().toUpperCase();
         System.out.println("When do you want to check in?");
-        String checkin = in.nextLine();
+        Date checkin = java.sql.Date.valueOf(in.nextLine());
         System.out.println("When do you want to check out?");
-        String checkout = in.nextLine();
+        Date checkout = java.sql.Date.valueOf(in.nextLine());
         System.out.println("How many children are in your party?");
         int children = in.nextInt();
         System.out.println("How many adults are in your party?");
@@ -83,16 +89,52 @@ public class InnReservations {
                     "VALUES ((select max(code) + 1 from lab7_reservations), ?, ?, ?, (select basePrice from lab7_rooms where roomcode = ?), ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
                 pstmt.setString(1, room);
-                pstmt.setDate(2, java.sql.Date.valueOf(checkin));
-                pstmt.setDate(3, java.sql.Date.valueOf(checkout));
+                pstmt.setDate(2, checkin);
+                pstmt.setDate(3, checkout);
                 pstmt.setString(4, room);
                 pstmt.setString(5, lname);
                 pstmt.setString(6, fname);
                 pstmt.setInt(7, adults);
                 pstmt.setInt(8, children);
 
-                int numUpdated = pstmt.executeUpdate();
-                System.out.println(numUpdated);
+                if (pstmt.executeUpdate() > 0) {
+                    String confirmSql = "SELECT FirstName, LastName, RoomCode, RoomName, bedType, CheckIn, CheckOut, Adults, Kids, Rate " +
+                                        "FROM lab7_reservations " +
+                                        "JOIN lab7_rooms ON Room = RoomCode " +
+                                        "WHERE CheckIn = ? and CheckOut = ? and room = ?";
+                    try (PreparedStatement confirmPstmt = conn.prepareStatement(confirmSql)) {
+                        confirmPstmt.setDate(1, checkin);
+                        confirmPstmt.setDate(2, checkout);
+                        confirmPstmt.setString(3, room);
+                        ResultSet rs = confirmPstmt.executeQuery();
+                        if (rs.next()) {
+                            String cFname = rs.getString("FirstName");
+                            String cLname = rs.getString("LastName");
+                            String cRoomCode = rs.getString("RoomCode");
+                            String cRoomName = rs.getString("RoomName");
+                            String cBedType = rs.getString("BedType");
+                            LocalDate cCheckIn = rs.getDate("CheckIn").toLocalDate();
+                            LocalDate cCheckOut = rs.getDate("CheckOut").toLocalDate();
+                            int cAdults = rs.getInt("Adults");
+                            int cKids = rs.getInt("Kids");
+                            int rate = rs.getInt("Rate");
+                            long totalDays = DAYS.between(cCheckIn, cCheckOut);
+                            Predicate<LocalDate> isWeekend = date -> date.getDayOfWeek() == DayOfWeek.SATURDAY
+                                    || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+                            long weekendDays = Stream.iterate(cCheckIn, date -> date.plusDays(1)).limit(totalDays)
+                                    .filter(isWeekend).count();
+                            long weekdays = totalDays - weekendDays;
+                            double totalCharge = rate * weekdays + (rate * 1.1) * weekendDays;
+                            System.out.println("Confirmation:\n" +
+                                    cFname + " " + cLname + "\n" +
+                                    cRoomName + " (" + cRoomCode + "), " + cBedType + " bed\n" +
+                                    cAdults + " Adults, " + cKids + " Kids\n" +
+                                    "Total Cost: " + totalCharge + "$");
+                        }
+                    }
+
+                }
+
             }
         } catch (SQLException e) {
             System.out.println("Could not create reservation: " + e.getMessage().split(";")[0]);
