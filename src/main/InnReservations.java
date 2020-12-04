@@ -1,6 +1,7 @@
 package main;
 
 import database.Database;
+import org.h2.store.Data;
 
 import java.io.FileNotFoundException;
 import java.sql.*;
@@ -20,13 +21,13 @@ public class InnReservations {
     private static final String JDBC_PASSWORD = "";
     private static final String MENU =
         "\nMain Menu"
-                + "\n1: FR1 view all rooms and rates"
-                + "\n2: FR2 make a new reservation"
-                + "\n3: FR3 change a reservation"
-                + "\n4: FR4 cancel a reservation"
-                + "\n5: FR5 view revenue summary"
-                + "\n6: exit"
-                + "\nSelect an option, or hold to speak with a representative";
+        + "\n1: FR1 view all rooms and rates"
+        + "\n2: FR2 make a new reservation"
+        + "\n3: FR3 change a reservation"
+        + "\n4: FR4 cancel a reservation"
+        + "\n5: FR5 view revenue summary"
+        + "\n6: exit"
+        + "\nSelect an option, or hold to speak with a representative";
 
     public static void main(String[] args) {
         try {
@@ -60,7 +61,59 @@ public class InnReservations {
     }
 
     private static void roomsAndRates() {
-        System.out.println("roomsAndRates");
+        String[] headers = {"RoomCode", "RoomName", "Beds", "BedType", "MaxOcc",
+            "BasePrice", "Decor", "NextAvailable", "NextReservation"};
+        String bar = String.format("%-127s%n", "-").replace(" ", "-");
+        String format = "%-8s | %-25s | %-5s | %-8s | %-7s | %-10s | %-11s | %-14s | %-15s%n";
+        String header = String.format(format, (Object[]) headers) + bar;
+        String query =
+          "WITH nearestPastCheckin AS (\n" +
+            "    SELECT room, MAX(checkin) AS nearestCheckin\n" +
+            "    FROM lab7_reservations\n" +
+            "    WHERE checkin <= CURDATE()\n" +
+            "    GROUP BY room\n" +
+            "), soonestDayAfterReservation AS (\n" +
+            "    SELECT r.room, DATEADD(DAY, 1, checkout) AS dayAfterReservation\n" +
+            "    FROM lab7_reservations AS r\n" +
+            "    JOIN nearestPastCheckin AS n ON r.room = n.room \n" +
+            "    WHERE nearestCheckin <= checkin AND\n" +
+            "        DATEADD(DAY, 1, checkout) NOT IN (\n" +
+            "            SELECT checkin FROM lab7_reservations\n" +
+            "        )\n" +
+            "), nextReservations AS (\n" +
+            "    SELECT room, checkin\n" +
+            "    FROM lab7_reservations\n" +
+            "    WHERE CURDATE() <= checkin\n" +
+            ") \n" +
+            "SELECT roomcode, roomname, beds, bedtype, maxOcc, basePrice, decor, \n" +
+            "    CASE WHEN CURDATE() >= IFNULL(MIN(s.dayAfterReservation), CURDATE())\n" +
+            "        THEN NULL ELSE MIN(s.dayAfterReservation) END AS nextAvailable, \n" +
+            "    MIN(n.checkin) AS nextReservation\n" +
+            "FROM lab7_rooms AS r \n" +
+            "    LEFT JOIN soonestDayAfterReservation AS s ON r.roomcode = s.room\n" +
+            "    LEFT JOIN nextReservations AS n ON r.roomcode = n.room\n" +
+            "GROUP BY r.roomcode\n" +
+            "ORDER BY r.roomname";
+
+        System.out.print("Rooms and Rates\n" + header);
+        try (Connection conn = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASSWORD)) {
+            try (Statement stmt = conn.createStatement()) {
+                ResultSet rs = stmt.executeQuery(query);
+                while (rs.next()) {
+                    Date nextAvailable = rs.getDate("nextAvailable");
+                    Date nextReservation = rs.getDate("nextReservation");
+                    System.out.printf(format,
+                      rs.getString("roomcode"), rs.getString("roomname"),
+                      rs.getString("beds"), rs.getString("bedtype"),
+                      rs.getString("maxOcc"), rs.getString("basePrice"),
+                      rs.getString("decor"),
+                      nextAvailable == null ? "Today" : nextAvailable.toLocalDate(),
+                      nextReservation == null ? "None" : nextReservation.toLocalDate());
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void reservations() {
@@ -281,9 +334,9 @@ public class InnReservations {
                 try (Statement stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
                      ResultSet rs = stmt.executeQuery(selectSql)) {
                     //Print Header
-                    System.out.format("%-5s %-25s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %n",
+                    System.out.format("%-5s | %-25s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s | %-10s %n",
                             "CODE", "Name", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Total");
-                    System.out.println(String.format("%175s", '-').replaceAll(" ", "-"));
+                    System.out.println(String.format("%200s", '-').replace(" ", "-"));
                     float[] totalTotals = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
                     float totalTotal = 0;
                     while (rs.next()) {
@@ -311,10 +364,10 @@ public class InnReservations {
                             totalTotal += monthTot;
                             if (!rs.next()) break;
                         }
-                        System.out.format("%-5s %-25s %s %n", code1, room, totalsString(months, total));
+                        System.out.format("%-5s | %-25s %s %n", code1, room, totalsString(months, total));
                     }
                     System.out.println();
-                    System.out.format("%-31s %s %n", "TOTAL PER MONTH", totalsString(totalTotals, totalTotal));
+                    System.out.format("%-33s %s %n", "TOTAL PER MONTH", totalsString(totalTotals, totalTotal));
                 }
             }
         } catch (SQLException e) {
@@ -326,10 +379,10 @@ public class InnReservations {
         StringBuilder totals = new StringBuilder();
         for (int i = 0; i < 12; i++) {
             String totMonth = String.format("$%.2f", totalArr[i]);
-            String padded = String.format("%10s ", totMonth);
+            String padded = String.format("| %-10s ", totMonth);
             totals.append(padded);
         }
         String totMonth = String.format("$%.2f", total);
-        return totals + String.format("%10s ", totMonth);
+        return totals + String.format("| %-10s ", totMonth);
     }
 }
